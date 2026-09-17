@@ -98,10 +98,12 @@ finally:
 - `buzz(duration: int) -> None`: Buzzes the buzzer for a specified duration in milliseconds.
 - `goto(target: float, unit: Literal["rad", "deg"] = "rad") -> None`: Moves the OWL to a target position. Blocks until the target is reached.
 
-## Related repositories
+## Related resources
 
 [owl-firmware](https://github.com/sedlak477/owl-firmware): The firmware for the OWL platform.  
-[owl-ranger](https://github.com/sedlak477/owl-ranger): A script for stepping through some orientations and recording measurements.
+[owl-ranger](https://github.com/sedlak477/owl-ranger): A script for stepping through some orientations and recording measurements.  
+[owl-hardware](https://github.com/sedlak477/owl-hardware): Hardware design files for the OWL platform.  
+[Dataset](https://doi.org/10.3217/kh254-z8374): Orientation-diverse BLE Channel Sounding and UWB ranging measurements recorded with the OWL.
 
 ## AI Disclosure
 
