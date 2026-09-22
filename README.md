@@ -7,13 +7,13 @@ This module provides high-level control for the OWL platform via serial communic
 To install the package, we recommend using [uv](https://github.com/astral-sh/uv):
 
 ```bash
-uv add git+https://github.com/LENS-TUGraz/pyowl.git
+uv add git+https://github.com/sedlak477/pyowl.git
 ```
 
 Alternatively, you can use standard pip:
 
 ```bash
-pip install git+https://github.com/LENS-TUGraz/pyowl.git
+pip install git+https://github.com/sedlak477/pyowl.git
 ```
 
 
