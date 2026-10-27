@@ -89,7 +89,7 @@ class OWL:
             raise RuntimeError("Serial port is not open")
         return self._serial.read(size)
         
-    def read_line(self, num_lines: int = 1) -> Optional[str]:
+    def read_line(self, num_lines: int = 1) -> str:
         """
         Read a line from existing serial connection.
         
@@ -97,7 +97,10 @@ class OWL:
             num_lines: Number of lines to read.
         
         Returns:
-            Decoded string line stripped of whitespace, or None if the read timed out.
+            Decoded string line stripped of whitespace.
+
+        Raises:
+            TimeoutError: If no line arrived within the read timeout.
         """
         if self._serial is None or not self._serial.is_open:
             raise RuntimeError("Serial port is not open")
@@ -106,12 +109,11 @@ class OWL:
         for _ in range(num_lines):
             line = self._serial.readline()
             if not line:
-                logger.warning("Serial read timeout")
-                return None
+                raise TimeoutError(f"No response from the OWL within {self._serial.timeout} s")
             lines += line.decode('utf-8', errors='replace').strip()
         return lines
 
-    def raw_command(self, command: str, num_lines: int = 1) -> Optional[str]:
+    def raw_command(self, command: str, num_lines: int = 1) -> str:
         """
         Send raw text command and read response.
         It is recommended to use the higher level functions, such as set_target(), get_target(), etc., instead.
@@ -121,9 +123,15 @@ class OWL:
             num_lines: Number of lines to read after sending the command.
             
         Returns:
-            The response string, or None if the read timed out.
+            The response string.
+
+        Raises:
+            TimeoutError: If the OWL did not respond within the read timeout.
         """
         cmd_bytes = f"{command}\n".encode('utf-8')
+        if self._serial is not None and self._serial.is_open:
+            # Drop stale lines, e.g. a goto reply that arrived after its timeout, so they are not taken as this reply
+            self._serial.reset_input_buffer()
         self.write(cmd_bytes)
         return self.read_line(num_lines)
 
@@ -221,6 +229,9 @@ class OWL:
         Args:
             target: The target position.
             unit: Unit of the target angle ("rad" for radians, "deg" for degrees). Default is "rad".
+
+        Raises:
+            TimeoutError: If the target was not reached within the read timeout, e.g. because the motor stalled.
         """
         if unit == "deg":
             target = math.radians(target)
