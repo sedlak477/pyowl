@@ -1,3 +1,3 @@
-from .owl import OWL
+from .owl import OWL, MOTOR_SETTINGS, DEFAULT_SNAPSHOT
 
-__all__ = ["OWL"]
+__all__ = ["OWL", "MOTOR_SETTINGS", "DEFAULT_SNAPSHOT"]

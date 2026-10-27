@@ -1,9 +1,46 @@
 import logging
 import math
 import serial
-from typing import Optional, Literal
+from typing import Iterable, Optional, Literal, Union, overload
 
 logger = logging.getLogger(__name__)
+
+# Numeric SimpleFOC motor settings reachable through the firmware's 'M' command, keyed by their
+# Commander code without the 'M' prefix. Values are in SimpleFOC units (rad, rad/s, V, A, s).
+# See https://docs.simplefoc.com/commander_motor
+MOTOR_SETTINGS: dict[str, str] = {
+    **{
+        f"{loop}{param}": f"{loop_name} {param_name}"
+        for loop, loop_name in {
+            "Q": "current q PID",
+            "D": "current d PID",
+            "V": "velocity PID",
+            "A": "angle PID",
+        }.items()
+        for param, param_name in {
+            "P": "P gain",
+            "I": "I gain",
+            "D": "D gain",
+            "R": "output ramp",
+            "L": "output limit",
+            "F": "low pass filter time constant",
+        }.items()
+    },
+    "LV": "velocity limit",
+    "LU": "voltage limit",
+    "LC": "current limit",
+    "R": "phase resistance",
+    "I": "phase inductance",
+    "ID": "d axis inductance",
+    "IQ": "q axis inductance",
+    "K": "KV rating",
+    "SM": "sensor zero offset",
+    "SE": "sensor electrical zero offset",
+    "WC": "centered PWM modulation",
+}
+
+# Settings read by default in get_setting(): the position/velocity loop and the motion limits
+DEFAULT_SNAPSHOT = ["AP", "AI", "AD", "AR", "AL", "VP", "VI", "VD", "VR", "VL", "VF", "LV", "LU"]
 
 class OWL:
     """
@@ -236,3 +273,60 @@ class OWL:
         if unit == "deg":
             target = math.radians(target)
         self.raw_command(f"G{target:.3f}")
+
+
+    def _motor_setting(self, name: str, value: Optional[float] = None) -> float:
+        name = name.upper()
+        if name not in MOTOR_SETTINGS:
+            raise ValueError(f"Unknown motor setting '{name}', expected one of {', '.join(MOTOR_SETTINGS)}")
+        response = self.raw_command(f"M{name}" if value is None else f"M{name}{value}")
+        # Replies look like 'PID vel| P: 0.500' (user friendly) or 'MVP0.500' (machine readable)
+        try:
+            return float(response.rsplit(":", 1)[-1].removeprefix(f"M{name}"))
+        except ValueError:
+            raise RuntimeError(f"Unexpected response to motor setting '{name}': {response!r}") from None
+
+    @overload
+    def get_setting(self, name: str) -> float: ...
+    @overload
+    def get_setting(self, name: Optional[Iterable[str]] = None) -> dict[str, float]: ...
+
+    def get_setting(self, name: Union[str, Iterable[str], None] = None) -> Union[float, dict[str, float]]:
+        """
+        Get one or more motor settings.
+        The firmware reports values with 3 decimal places.
+
+        Args:
+            name: SimpleFOC motor command code without the 'M' prefix, e.g. "VP" (see MOTOR_SETTINGS),
+                or several codes. Default is the angle and velocity PID settings and the limits (DEFAULT_SNAPSHOT).
+
+        Returns:
+            The current value for a single code, otherwise a dict of code to current value.
+        """
+        if isinstance(name, str):
+            return self._motor_setting(name)
+        return {n.upper(): self._motor_setting(n) for n in (DEFAULT_SNAPSHOT if name is None else name)}
+
+    @overload
+    def set_setting(self, name: str, value: float) -> float: ...
+    @overload
+    def set_setting(self, name: dict[str, float]) -> dict[str, float]: ...
+
+    def set_setting(self, name: Union[str, dict[str, float]], value: Optional[float] = None) -> Union[float, dict[str, float]]:
+        """
+        Set one or more motor settings.
+        Settings are kept in RAM only and reset when the OWL restarts.
+
+        Args:
+            name: SimpleFOC motor command code without the 'M' prefix, e.g. "VP" (see MOTOR_SETTINGS),
+                or a dict of codes to new values, which are set in order.
+            value: The new value when setting a single code.
+
+        Returns:
+            The value read back from the OWL for a single code, otherwise a dict of code to read back value.
+        """
+        if isinstance(name, str):
+            if value is None:
+                raise TypeError("set_setting() needs a value when setting a single code")
+            return self._motor_setting(name, value)
+        return {n.upper(): self._motor_setting(n, v) for n, v in name.items()}

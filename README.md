@@ -97,6 +97,20 @@ finally:
 - `set_LED(on: bool) -> None`: Sets the user LED state.
 - `buzz(duration: int) -> None`: Buzzes the buzzer for a specified duration in milliseconds.
 - `goto(target: float, unit: Literal["rad", "deg"] = "rad") -> None`: Moves the OWL to a target position. Blocks until the target is reached.
+- `get_setting(name: str | Iterable[str] | None = None) -> float | dict[str, float]`: Gets a motor setting (see below), or a dict of several. Defaults to the angle and velocity PID settings and the limits (`DEFAULT_SNAPSHOT`).
+- `set_setting(name: str | dict[str, float], value: float | None = None) -> float | dict[str, float]`: Sets a motor setting, or several in order from a dict, and returns the value(s) read back from the OWL.
+
+### Motor settings
+
+The firmware exposes SimpleFOC's [motor commands](https://docs.simplefoc.com/commander_motor) under `M`. Settings are named by their command code without the `M`, e.g. `VP` (velocity PID P gain), `AP` (angle PID P gain) or `LV` (velocity limit in rad/s). `MOTOR_SETTINGS` lists all supported codes; unknown codes raise a `ValueError`. Settings are kept in RAM only and reset when the OWL restarts, and values are read back with 3 decimal places.
+
+```python
+with OWL(port='/dev/ttyUSB0') as owl:
+    owl.set_setting("LV", 3.14)
+    owl.set_setting({"VP": 0.5, "VI": 10, "AP": 20})
+    print(owl.get_setting("VP"))
+    print(owl.get_setting())  # default snapshot
+```
 
 ## Related resources
 
