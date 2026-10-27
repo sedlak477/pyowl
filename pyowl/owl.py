@@ -1,3 +1,4 @@
+import logging
 import math
 import serial
 from typing import Optional, Literal
@@ -88,7 +89,7 @@ class OWL:
             raise RuntimeError("Serial port is not open")
         return self._serial.read(size)
         
-    def read_line(self, num_lines: int = 1) -> str:
+    def read_line(self, num_lines: int = 1) -> Optional[str]:
         """
         Read a line from existing serial connection.
         
@@ -96,7 +97,7 @@ class OWL:
             num_lines: Number of lines to read.
         
         Returns:
-            Decoded string line stripped of whitespace.
+            Decoded string line stripped of whitespace, or None if the read timed out.
         """
         if self._serial is None or not self._serial.is_open:
             raise RuntimeError("Serial port is not open")
@@ -110,7 +111,7 @@ class OWL:
             lines += line.decode('utf-8', errors='replace').strip()
         return lines
 
-    def raw_command(self, command: str, num_lines: int = 1) -> str:
+    def raw_command(self, command: str, num_lines: int = 1) -> Optional[str]:
         """
         Send raw text command and read response.
         It is recommended to use the higher level functions, such as set_target(), get_target(), etc., instead.
@@ -120,7 +121,7 @@ class OWL:
             num_lines: Number of lines to read after sending the command.
             
         Returns:
-            The response string.
+            The response string, or None if the read timed out.
         """
         cmd_bytes = f"{command}\n".encode('utf-8')
         self.write(cmd_bytes)
